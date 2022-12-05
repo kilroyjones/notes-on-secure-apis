@@ -1,0 +1,19 @@
+input {
+  height: 22px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+button {
+  height: 28px;
+}
+
+#result {
+  font-size: 18px;
+  color: #0f900f;
+}
+
+#error {
+  font-size: 18px;
+  color: #b00f0f;
+}
