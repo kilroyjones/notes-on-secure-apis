@@ -1,6 +1,7 @@
 async function getAlbumTitle() {
   document.getElementById("error").innerHTML = "";
   document.getElementById("result").innerHTML = "";
+  let id = document.getElementById("album-id").value;
 
   fetch("http://localhost:3000/albums/" + id, {
     method: "GET",

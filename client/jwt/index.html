@@ -6,11 +6,12 @@
   </head>
   <body>
     <h3>Sign up</h3>
-    <input id="id" placeholder="Username" value="1" />
-    <button type="submit" onclick="signup()">Sign up</button>
-    "
+    <input id="username" placeholder="Username" value="some-username" />
+    <button type="submit" onclick="signup()">Get JWT</button>
     <hr />
     <h3>Album title lookup</h3>
+    <div>Token: <span id="token"></span></div>
+    <br />
     <input id="album-id" placeholder="Enter album ID" value="42" />
     <button id="search-album-id" type="button" onclick="getAlbumTitle()">Search</button>
     <div id="result"></div>

@@ -1,69 +1,67 @@
 use actix_web::{
     App, 
-    dev, 
     Error, 
-    get, 
-    FromRequest, 
     HttpRequest,
-    HttpServer, 
     HttpResponse, 
+    HttpServer, 
     post, 
-    put,
     Result,
     web};
 use actix_cors::Cors;
 use backend::models::Albums;
 use dotenv::dotenv;
-use futures_util::future::{ok, err, Ready};
+use hmac::{Hmac, Mac};
+use jwt::{VerifyWithKey, SignWithKey};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
-use serde_derive::Deserialize;
+use serde_derive::{Serialize, Deserialize};
+use sha2::Sha256;
 use std::env;
+use std::collections::BTreeMap;
 use sqlx::sqlite::SqlitePool;
 
 
 #[derive(Deserialize)]
 pub struct User {
-    id: i64
+    username: String 
+}
+
+
+#[derive(Serialize)]
+pub struct SignupResponse {
+    token: String 
 }
 
 #[post("/signup")]
 async fn signup(form: web::Form<User>) -> Result<HttpResponse>{
-    println!("{:?}", form.id);
-    Ok(HttpResponse::Ok()
-        .content_type("text/plain")
-       .body(format!("Worked")))
+    let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret").unwrap();
+    let mut claims = BTreeMap::new();
+    claims.insert("username", form.username.clone());
+    let token_str = claims.sign_with_key(&key).unwrap();
+    let serialized = serde_json::to_string(&SignupResponse{token: token_str}).unwrap();
+    Ok(HttpResponse::Ok().body(serialized))
 }
-
 
 #[derive(Debug, Deserialize)]
-struct Thing {
-    name: String
+struct AlbumRequest  {
+    id: i32 
 }
 
-impl FromRequest for Thing {
-    type Error = Error;
-    type Future = Ready<Result<Self, Self::Error>>;
-
-    fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
-        println!("{:?}", req);
-        ok(Thing { name: "thingy".into() })
-    }
-}
-
-#[get("/albums/{id}")]
+#[post("/api/request")]
 async fn index(
-    path: web::Path<u32>,
     pool: web::Data<SqlitePool>, 
-    thing: Option<Thing>) -> Result<HttpResponse, Error> {
+    req: HttpRequest,
+    album_req: web::Json<AlbumRequest>) -> Result<HttpResponse, Error> {
 
-    match thing {
-        Some(_) => println!("ASDFsa"),
-        None => println!("sdfadsf")
+    let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret").unwrap();
+    let headers = req.headers();
+    let token_str = headers.get("authorization").unwrap().to_str().unwrap();
+    let _claims: BTreeMap<String, String> = match token_str.verify_with_key(&key) {
+        Ok(claims) => claims, 
+        Err(_) => return Ok(HttpResponse::Ok().body("Error with token")) 
     };
 
-    let id = path.into_inner();
     let mut connection = pool.acquire().await.unwrap();
-    let results = sqlx::query_as!(Albums, "SELECT * FROM albums WHERE album_id=?", id)
+    let results = sqlx::query_as!(Albums, "SELECT * FROM albums WHERE album_id=?", album_req.id)
         .fetch_all(&mut connection)
         .await.unwrap();
 
